@@ -7,7 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class FormService {
   constructor(private prisma: PrismaService) {}
 
-  create(data: any, userId: number) {
+  create(data: CreateFormDto, userId: number) {
     return this.prisma.form.create({
       data: {
         title: data.title,
