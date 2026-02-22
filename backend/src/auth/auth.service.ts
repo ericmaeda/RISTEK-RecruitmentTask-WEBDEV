@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -33,7 +31,7 @@ export class AuthService {
     return {message: 'Pendaftaran berhasil! Silakan lakukan Login!', userId: user.id}
   }
 
-  async logic(data: any) {
+  async login(data: any) {
     const {email, password} = data;
 
     const user = this.prisma.user.findUnique({ where:{email} });
@@ -52,5 +50,4 @@ export class AuthService {
       access_token: token,
     };
   }
-  
 }
