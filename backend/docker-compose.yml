@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nest_postgres_db
+    environment:
+      POSTGRES_USER: user_eric
+      POSTGRES_PASSWORD: hidup_jokowi
+      POSTGRES_DB: form_builder_db
+    ports:
+      - "5444:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:
