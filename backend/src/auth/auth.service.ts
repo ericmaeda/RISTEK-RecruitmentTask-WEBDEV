@@ -34,11 +34,15 @@ export class AuthService {
   async login(data: any) {
     const {email, password} = data;
 
-    const user = this.prisma.user.findUnique({ where:{email} });
-    const passwordValid = await bcrypt.compare(password, user.password);
-
+    const user = await this.prisma.user.findUnique({ where:{email} });
     // cek apakah user exist 
-    if (!user || !passwordValid) {
+    if (!user) {
+      throw new UnauthorizedException("Cek kembali username dan password Anda!")
+    }
+
+    const passwordValid = await bcrypt.compare(password, user.password);
+    // cek apakah password benar
+    if (!passwordValid) {
       throw new UnauthorizedException("Cek kembali username dan password Anda!")
     }
 
