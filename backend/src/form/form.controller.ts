@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Put } from '@nestjs/common';
-import { FormService } from './form.service';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Put, Query } from '@nestjs/common';
+import { FormService, FormQueryParams } from './form.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -17,8 +17,20 @@ export class FormController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  findAll(@Request() req) {
-    return this.formService.findAllByUser(req.user.userId);
+  findAll(
+    @Request() req,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('sortBy') sortBy?: 'createdAt' | 'updatedAt' | 'title',
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ) {
+    const queryParams: FormQueryParams = {
+      search,
+      status: status as any,
+      sortBy,
+      sortOrder,
+    };
+    return this.formService.findAllByUser(req.user.userId, queryParams);
   }
 
   @UseGuards(JwtAuthGuard)

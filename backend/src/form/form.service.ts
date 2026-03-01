@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { QuestionType, Prisma } from '@prisma/client';
+import { QuestionType, Prisma, FormStatus } from '@prisma/client';
+
+export interface FormQueryParams {
+  search?: string;
+  status?: FormStatus;
+  sortBy?: 'createdAt' | 'updatedAt' | 'title';
+  sortOrder?: 'asc' | 'desc';
+}
 
 @Injectable()
 export class FormService {
@@ -14,6 +21,7 @@ export class FormService {
         title: data.title,
         description: data.description,
         userId: userId,
+        status: FormStatus.DRAFT,
       },
       include: {
         questions: true,
@@ -21,9 +29,33 @@ export class FormService {
     });
   }
 
-  async findAllByUser(userId: number) {
+  async findAllByUser(userId: number, query: FormQueryParams = {}) {
+    const { search, status, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+
+    const where: Prisma.FormWhereInput = {
+      userId,
+    };
+
+    // Search by title
+    if (search) {
+      where.title = {
+        contains: search,
+        mode: 'insensitive',
+      };
+    }
+
+    // Filter by status
+    if (status) {
+      where.status = status;
+    }
+
+    // Sorting
+    const orderBy: Prisma.FormOrderByWithRelationInput = {
+      [sortBy]: sortOrder,
+    };
+
     return this.prisma.form.findMany({
-      where: { userId },
+      where,
       include: {
         questions: {
           orderBy: { order: 'asc' },
@@ -32,7 +64,7 @@ export class FormService {
           select: { responses: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy,
     });
   }
 
@@ -67,6 +99,7 @@ export class FormService {
       data: {
         title: data.title,
         description: data.description,
+        status: data.status,
       },
       include: {
         questions: true,
@@ -82,10 +115,29 @@ export class FormService {
     });
   }
 
-  // Question methods
+  /**
+   * Check if form has any submissions
+   */
+  private async hasFormResponses(formId: number): Promise<boolean> {
+    const count = await this.prisma.formResponse.count({
+      where: { formId },
+    });
+    return count > 0;
+  }
+
+  /**
+   * CONSTRAINT: If form has submissions, cannot delete or modify questions
+   */
   async createQuestion(formId: number, data: CreateQuestionDto) {
-    // Verify form exists and belongs to user
+    // Verify form exists
     const form = await this.findOne(formId);
+
+    // Check constraint: if form has responses, cannot add questions
+    if (await this.hasFormResponses(formId)) {
+      throw new ForbiddenException(
+        'Cannot add questions to a form that already has submissions. Please create a new form instead.'
+      );
+    }
 
     // Get the highest order
     const lastQuestion = await this.prisma.question.findFirst({
@@ -110,10 +162,22 @@ export class FormService {
   async updateQuestion(questionId: number, data: UpdateQuestionDto) {
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
+      include: {
+        form: true,
+      },
     });
 
     if (!question) {
       throw new NotFoundException(`Question with ID ${questionId} not found`);
+    }
+
+    // CONSTRAINT: If form has responses, cannot change question type
+    if (data.questionType && data.questionType !== question.questionType) {
+      if (await this.hasFormResponses(question.formId)) {
+        throw new ForbiddenException(
+          'Cannot change question type for a form that already has submissions. This would invalidate existing responses.'
+        );
+      }
     }
 
     return this.prisma.question.update({
@@ -137,6 +201,13 @@ export class FormService {
       throw new NotFoundException(`Question with ID ${questionId} not found`);
     }
 
+    // CONSTRAINT: If form has responses, cannot delete questions
+    if (await this.hasFormResponses(question.formId)) {
+      throw new ForbiddenException(
+        'Cannot delete questions from a form that already has submissions. This would invalidate existing responses.'
+      );
+    }
+
     return this.prisma.question.delete({
       where: { id: questionId },
     });
@@ -157,6 +228,13 @@ export class FormService {
   // Response methods
   async submitResponse(formId: number, responses: SubmitResponseDto[]) {
     const form = await this.findOne(formId);
+
+    // Only allow response submission for published forms
+    if (form.status !== FormStatus.PUBLISHED) {
+      throw new BadRequestException(
+        'Cannot submit response to a form that is not published.'
+      );
+    }
 
     return this.prisma.formResponse.create({
       data: {
@@ -191,7 +269,7 @@ export class FormService {
   }
 }
 
-// DTO interfaces (will be in separate files)
+// DTO interfaces
 export interface CreateQuestionDto {
   questionText: string;
   questionType: string;

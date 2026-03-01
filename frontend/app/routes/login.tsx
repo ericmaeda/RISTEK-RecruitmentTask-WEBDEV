@@ -13,11 +13,12 @@ import {
 } from "~/components/ui/card";
 import { Navbar } from "~/components/layout/navbar";
 import { Footer } from "~/components/layout/footer";
-import { validateUser } from "~/lib/dummy-data";
+import { useAuth } from "~/lib/auth-context";
 import { LogIn, Mail, Lock, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -28,16 +29,12 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const result = await login(email, password);
 
-    const user = validateUser(email, password);
-    if (user) {
-      // Store user in localStorage for demo purposes
-      localStorage.setItem("user", JSON.stringify(user));
+    if (result.success) {
       navigate("/forms");
     } else {
-      setError("Invalid email or password. Try john@example.com or jane@example.com");
+      setError(result.error || "Login failed. Please try again.");
     }
     setIsLoading(false);
   };
@@ -110,7 +107,7 @@ export default function LoginPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
               <p className="text-sm text-center text-muted-foreground">

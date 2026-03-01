@@ -1,9 +1,15 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateFormDto } from './create-form.dto';
-import { FormService } from '../form.service';
-import { Controller } from '@nestjs/common';
+import { IsString, IsOptional, IsEnum } from "class-validator";
 
-@Controller("form")
-export class UpdateFormDto extends PartialType(CreateFormDto) {
-    
+export class UpdateFormDto {
+    @IsString()
+    @IsOptional()
+    title?: string;
+
+    @IsString()
+    @IsOptional()
+    description?: string;
+
+    @IsEnum(['DRAFT', 'PUBLISHED', 'CLOSED'])
+    @IsOptional()
+    status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED';
 }

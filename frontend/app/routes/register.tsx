@@ -13,46 +13,47 @@ import {
 } from "~/components/ui/card";
 import { Navbar } from "~/components/layout/navbar";
 import { Footer } from "~/components/layout/footer";
+import { useAuth } from "~/lib/auth-context";
 import { UserPlus, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
+  const { register } = useAuth();
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const result = await register(email, username, password);
 
-    // For demo, create a new user and store in localStorage
-    const newUser = {
-      id: Date.now().toString(),
-      email,
-      name,
-      createdAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem("user", JSON.stringify(newUser));
-    navigate("/forms");
+    if (result.success) {
+      setSuccess("Registration successful! Redirecting to login...");
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } else {
+      setError(result.error || "Registration failed. Please try again.");
+    }
     setIsLoading(false);
   };
 
@@ -80,16 +81,22 @@ export default function RegisterPage() {
                   {error}
                 </div>
               )}
+              {success && (
+                <div className="flex items-center gap-2 p-3 rounded-md bg-green-100 text-green-700 text-sm">
+                  <CheckCircle className="h-4 w-4" />
+                  {success}
+                </div>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="username">Username</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="name"
+                    id="username"
                     type="text"
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    placeholder="johndoe"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="pl-10"
                     required
                   />
@@ -122,6 +129,7 @@ export default function RegisterPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
                     required
+                    minLength={8}
                   />
                 </div>
               </div>
@@ -137,6 +145,7 @@ export default function RegisterPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pl-10"
                     required
+                    minLength={8}
                   />
                 </div>
               </div>

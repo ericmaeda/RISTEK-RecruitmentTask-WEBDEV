@@ -1,17 +1,19 @@
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { FileText, Home, LogIn, LogOut, UserPlus } from "lucide-react";
+import { useAuth } from "~/lib/auth-context";
 
-interface NavbarProps {
-  isLoggedIn?: boolean;
-  userName?: string;
-  onLogout?: () => void;
-}
-
-export function Navbar({ isLoggedIn = false, userName, onLogout }: NavbarProps) {
+export function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -32,7 +34,7 @@ export function Navbar({ isLoggedIn = false, userName, onLogout }: NavbarProps) 
                 Home
               </Button>
             </Link>
-            {isLoggedIn && (
+            {isAuthenticated && (
               <Link to="/forms">
                 <Button
                   variant={isActive("/forms") ? "secondary" : "ghost"}
@@ -48,16 +50,16 @@ export function Navbar({ isLoggedIn = false, userName, onLogout }: NavbarProps) 
         </div>
 
         <div className="flex items-center gap-4">
-          {isLoggedIn ? (
+          {isAuthenticated ? (
             <>
               <span className="hidden sm:inline text-sm text-muted-foreground">
-                Welcome, {userName}
+                Welcome, {user?.username || user?.email}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-2"
-                onClick={onLogout}
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
                 Logout
